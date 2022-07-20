@@ -1,5 +1,6 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Load birth weight data set - txt data format
@@ -27,7 +28,7 @@ with open('lowbwt.txt','r') as f:
 # -------------------------------------------------------------------------
 
 rawData = np.array(rawData)
-data = rawData[:,2:] # drop first two columns
+data = rawData[:,2:] # drop first two columns, irrelevant to the model
 
 # potential regressors
 index_set = [[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[6,0,0],[7,0,0],[8,0,0],
@@ -40,12 +41,39 @@ index_set = [[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[6,0,0],[7,0,0],[8,0,0],
 [3,5,6],[3,5,7],[3,5,8],[3,6,7],[3,6,8],[3,7,8],[4,5,6],[4,5,7],[4,5,8],[4,6,7],
 [4,6,8],[4,7,8],[5,6,7],[5,6,8],[5,7,8],[6,7,8],[1,1,0],[1,1,1],[2,2,0],[2,2,2]]
 
+"""
+	1) interactions of x_ix_jx_k based on choices of i, j, and k
+	2) standardized the list such that ||x||^2/n = 1
+"""
 def read_index(dt,idx):
-    init = dt[:,idx[0]-1]
-    for i in idx[1:]:
-        if i != 0:
-            init *= dt[:,i-1]
+	init = dt[:,idx[0]-1]
+	for i in idx[1:]:
+		if i != 0:
+			init *= dt[:,i-1]
+	s = np.sum(np.dot(init,init))
+	if s != 0:
+		new_init = [np.sqrt(189)*x/np.sqrt(s) for x in init]
+		return np.array(new_init)
+	else:
+		return np.array(init)
 
-    return init
+# all regressors in a 189x88 numpy array
+regrs = []
+for x in index_set:
+	regrs.append(read_index(data, x))
+regrs = np.array(regrs).T
 
-regressors = np.array([read_index(data,index) for index in index_set]).T    
+# useful predictor variable
+idx = []
+for i in range(88):
+	if np.sum(regrs[:,i]) != 0:
+		idx.append(i)
+x = regrs[:,idx]
+
+# reponse variable
+y = data[:,-1]
+
+# estimate the correlation between predictor variable and the response variable
+corr = [np.dot(x[:,i],y)/n for i in range(19)]
+itr = np.argsort(corr) # sort correlations in ascending order
+
